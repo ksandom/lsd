@@ -17,7 +17,7 @@ function getDescriptionForFile
 {
     fileName="$1"
     
-    head -n10 "$fileName" | grep -v '\(^#!\|^# *$\)' | grep '^#' | cut -b3- | head -n 1
+    head -n10 "$fileName" | grep -v '\(^#!\|^# *$\|Copyright\)' | grep '^#' | cut -b3- | head -n 1
 }
 
 function glue
