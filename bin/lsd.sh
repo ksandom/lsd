@@ -1,6 +1,8 @@
 #!/bin/bash
 # An ls style util for listing out the first-line descriptions.
 
+separator="\0"
+
 function getFileList
 {
     ls -1
@@ -29,7 +31,7 @@ function convertSymlinks
     done
 }
 
-function passesSanityChecks
+function getType
 {
     fileName="$1"
     
@@ -47,8 +49,17 @@ function passesSanityChecks
         
         # TODO There are probably more types that should be supported here.
         if [[ "$completeType" =~ ^.*ASCII.*$ ]]; then
-            echo "ASCII"
-            return 0
+            firstLine="$(head -n1 "$fileName")"
+            if [ "${firstLine::2}" == '#!' ]; then
+                cleanedFirstLine="$(echo "$firstLine" | cut -d\# -f2 | sed 's/ //g;')"
+                interpreter="$(basename "$cleanedFirstLine")"
+                
+                echo "ASCII/$interpreter"
+                return 0
+            else
+                echo "ASCII"
+                return 0
+            fi
         else
             echo "Binary"
             return 0
@@ -68,25 +79,26 @@ function getDescriptionForFile
 {
     fileName="$1"
     
-    reason="$(passesSanityChecks "$fileName")"
+    type="$(getType "$fileName")"
     if [ "$?" == 0 ] ; then
-        if [ "$reason" == 'ASCII' ]; then
-            head -n10 "$fileName" | exclude "$fileName" | grep '^#' | cut -b3- | head -n 1
-        else
+        if [ "$type" == 'Binary' ]; then
             # TODO Restrict to ELF?
             # TODO Fix path to the fileName. Eg ./filename vs an absolute path that is passed.
-            $fileName --help 2>/dev/null | head | exclude "$fileName" | head -n1
+            description="$($fileName --help 2>/dev/null | head | exclude "$fileName" | head -n1)"
+        elif [ "${type::5}" == 'ASCII' ]; then
+            description="$(head -n10 "$fileName" | exclude "$fileName" | grep '^#' | cut -b3- | head -n 1)"
         fi
+        
+        echo "$type $separator$description"
     else
-        echo "$reason."
+        echo "$type.$separator"
     fi
-    
 }
 
 function glue
 {
     while read -r fileName; do
-        echo "${fileName}\0$(getDescriptionForFile "$fileName")" &
+        echo "${fileName}$separator$(getDescriptionForFile "$fileName")" &
     done
     wait
 }
