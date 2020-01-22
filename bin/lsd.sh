@@ -2,6 +2,7 @@
 # An ls style util for listing out the first-line descriptions.
 
 separator="\0"
+maxSymlinkDepth="20"
 
 function getFileList
 {
@@ -24,11 +25,35 @@ function convertSymlinks
     while read -r fileName; do
         # TODO if [[ "$fileName" =~ ^.*:\ symbolic\ link.*$ ]]; then
         if echo "$(file "$fileName")" | grep -q "^.*: symbolic link.*$"; then
-            echo "$(file "$fileName")" | sed 's/^.*symbolic link to //g'
+            result="$(file "$fileName" | sed 's/^.*symbolic link to //g')"
+            if [ -h "$result" ]; then
+                deepConvertSymlink "$result" "$maxSymlinkDepth"
+            else
+                echo "$result"
+            fi
         else
             echo "$fileName"
         fi
     done
+}
+
+function deepConvertSymlink
+{
+    fileName="$1"
+    depth="$2"
+    
+    result="$(file "$fileName" | sed 's/^.*symbolic link to //g')"
+    
+    if [ -h "$result" ]; then
+        if [ "$depth" -lt "$maxSymlinkDepth" ]; then
+            let nextDepth=$depth+1
+            deepConvertSymlink "$result" "$nextDepth"
+        else # We're out of our depth. Just return what we have.
+            echo "$result"
+        fi
+    else # Success.
+        echo "$result"
+    fi
 }
 
 function getType
@@ -36,7 +61,7 @@ function getType
     fileName="$1"
     
     if [ ! -e "$fileName" ]; then
-        echo "File not found"
+        echo "File not found - $fileName"
         return 1
     elif [ -d "$fileName" ]; then
         echo "Directory"
