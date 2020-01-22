@@ -67,6 +67,27 @@ function getType
     fi
 }
 
+function getMethod
+{
+    fileName="$1"
+    description="$2"
+    
+    line="$(grep -n "$description" "$fileName" | head -n1)"
+    lineNumber="$(echo "$line" | cut -d: -f1)"
+    lineRemainder="$(echo "$line" | cut -d: -f2-)"
+    cleanedRemainder="$(echo "$lineRemainder" | sed 's/^ *//g')"
+    
+    if [ "${cleanedRemainder::1}" == '#' ]; then
+        commentInitiator='#'
+    elif [ "${cleanedRemainder::2}" == '//' ]; then
+        commentInitiator='//'
+    else
+        commentInitiator="unknown (${cleanedRemainder::5})"
+    fi
+    
+    echo "l=$lineNumber, c=$commentInitiator"
+}
+
 function exclude
 {
     fileName="$1"
@@ -85,13 +106,15 @@ function getDescriptionForFile
             # TODO Restrict to ELF?
             # TODO Fix path to the fileName. Eg ./filename vs an absolute path that is passed.
             description="$($fileName --help 2>/dev/null | head | exclude "$fileName" | head -n1)"
+            method="--help"
         elif [ "${type::5}" == 'ASCII' ]; then
             description="$(head -n10 "$fileName" | exclude "$fileName" | grep '^#' | cut -b3- | head -n 1)"
+            method="$(getMethod "$fileName" "$description")"
         fi
         
-        echo "$type $separator$description"
+        echo "$type $separator$method$separator$description"
     else
-        echo "$type.$separator"
+        echo "$separator$separator$type."
     fi
 }
 
