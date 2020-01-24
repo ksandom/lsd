@@ -1,8 +1,13 @@
 #!/bin/bash
 # An ls style util for listing out the first-line descriptions.
 
-separator="\0"
+separator="	"
 maxSymlinkDepth="20"
+
+defaultColour="\\e[0m"
+
+usefulColours[0]="$defaultColour"
+colourCount=0
 
 function getFileList
 {
@@ -137,7 +142,7 @@ function getDescriptionForFile
             method="$(getMethod "$fileName" "$description")"
         fi
         
-        echo "$type $separator$method$separator$description"
+        echo -e "$type$separator$method$separator$description"
     else
         echo "$separator$separator$type."
     fi
@@ -146,15 +151,75 @@ function getDescriptionForFile
 function glue
 {
     while read -r fileName; do
-        echo "${fileName}$separator$(getDescriptionForFile "$fileName")" &
+        echo -e "${fileName}$separator$(getDescriptionForFile "$fileName")" &
     done
     wait
 }
 
 function format
 {
-    column -t -s"\0"
+    #column -t -s"\0"
+    IFS="${separator}"
+    while read fileName type method description; do
+        printf '%-30s' "$(truncateText "$fileName" 30)"
+        printf '%-30s' "$(colouriseText "$type" 10)"
+        printf '%-30s' "$(colouriseText "$method" 10)"
+        printf '%-30s' "$(truncateText "$description" 50)"
+        echo
+    done
+    
+    # TODO This line is probably unnecessary.
+    IFS=" "
 }
+
+function truncateText
+{
+    text="$1"
+    limit="$2"
+    
+    echo "$text" | cut -b-$limit
+}
+
+function colouriseText
+{
+    text="$1"
+    limit="$2"
+    
+    inputId="$(echo "$text" | md5sum | sed 's/\([a-z]\|-\| \)//g' | sed 's/^0*//g')"
+    outputId=$(($inputId%$colourCount))
+    
+    colour="${usefulColours[$outputId]}"
+    
+    truncatedText="$(echo "$text" | cut -b-$limit)"
+    
+    echo -e "${colour}${truncatedText}${defaultColour}"
+}
+
+function generateColours
+{
+    for foreground in {39..37} {90..97}; do
+        for background in {49..47} {100..107}; do
+            let offsetBackground=$background-10
+            
+            # TODO Also remove light vs dark colour combinations.
+            if [ "$offsetBackground" != "$background" ]; then
+                usefulColours+=("\\e[${foreground}m\\e[${background}m")
+            fi
+        done
+    done
+    
+    colourCount="$(echo "${usefulColours[@]}" | wc -w)"
+}
+
+function listColors
+{
+    for colour in ${usefulColours[@]}; do
+        echo -e "${colour}thing${defaultColour}"
+    done
+}
+
+generateColours
+# listColors
 
 if [ "$1" == '' ]; then
     getFileList | convertSymlinks | glue | format
