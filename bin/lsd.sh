@@ -5,9 +5,12 @@ separator="	"
 maxSymlinkDepth="20"
 
 defaultColour="\\e[0m"
+extraColoursToBan=("97 103" "96 103" "96 102" "97 106" "97 107" "96 107" "96 106" "95 106" "64 100" "93 107" "93 107" "95 102" "95 101" "95 105" "94 100" "92 107" "93 103" "93 102" "92 106" "92 103" "92 102" "91 105" "93 106" "91 101" "90 105" "90 104" "90 100" "37 102" "37 103" "37 47" "39 47" "94 104" "37 105")
 
+# Stuff you shouldn't mess with.
 usefulColours[0]="$defaultColour"
 colourCount=0
+debug=0
 
 function getFileList
 {
@@ -195,23 +198,58 @@ function colouriseText
     echo -e "${colour}${truncatedText}${defaultColour}"
 }
 
-function generateColours
+function generateUnfilteredCodes
 {
     for foreground in {39..37} {90..97}; do
         for background in {49..47} {100..107}; do
-            let offsetBackground=$background-10
-            
-            # TODO Also remove light vs dark colour combinations.
-            if [ "$offsetBackground" != "$background" ]; then
-                usefulColours+=("\\e[${foreground}m\\e[${background}m")
-            fi
+            echo "$foreground" "$background"
         done
     done
+}
+
+function filterSimilarColours
+{
+    while read -r foreground $background;do
+            let offsetForeground1=$foreground+10
+            let offsetForeground2=$foreground+60
+            let offsetForeground3=$foreground+70
+            
+            if [ "$offsetForeground1" != "$foreground" ] && [ "$offsetForeground2" != "$foreground" ] && [ "$offsetForeground3" != "$foreground" ]; then
+                echo "$foreground $background"
+            fi
+    done
+}
+
+function filterManualColours
+{
+    combinedFilter='\('
+    
+    for filter in "${extraColoursToBan[@]}"; do
+        if [ "${#combinedFilter}" == '2' ]; then
+            combinedFilter="$combinedFilter$filter"
+        else
+            combinedFilter="$combinedFilter\|$filter"
+        fi
+    done
+    combinedFilter="$combinedFilter\)"
+    
+    grep -v "$combinedFilter"
+}
+
+function generateColours
+{
+    while read -r foreground background;do
+        if [ "$debug" == '0' ]; then
+            usefulColours+=("\\e[${foreground}m\\e[${background}m")
+        else
+            usefulColours+=("$foreground,$background \\e[${foreground}m\\e[${background}m")
+        fi
+    done < <(generateUnfilteredCodes | filterManualColours | filterSimilarColours )
     
     colourCount="$(echo "${usefulColours[@]}" | wc -w)"
 }
 
-function listColors
+function listColours
 {
     for colour in ${usefulColours[@]}; do
         echo -e "${colour}thing${defaultColour}"
@@ -219,10 +257,18 @@ function listColors
 }
 
 generateColours
-# listColors
 
-if [ "$1" == '' ]; then
-    getFileList | convertSymlinks | glue | format
-else
-    inputToList "$@" | convertSymlinks | glue | format
-fi
+case $1 in
+    '')
+        getFileList | convertSymlinks | glue | format
+    ;;
+    '--listColours')
+        debug="1"
+        usefulColours[0]="$defaultColour"
+        generateColours
+        listColours
+    ;;
+    *)
+        inputToList "$@" | convertSymlinks | glue | format
+    ;;
+esac
