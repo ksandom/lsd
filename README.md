@@ -11,3 +11,9 @@ $ ./lsd.sh /bin/zc*
 /bin/zcmp  Compare the uncompressed contents of compressed files, byte by byte.
 /bin/zcat  Uncompress files to standard output.
 ```
+
+## Installing it
+
+```bash
+sudo make install
+```
