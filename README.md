@@ -16,6 +16,13 @@ $ lsd /bin/z*
 /bin/znew                     ASCII/sh        l=6, c=#        This program is free software; you can redistribut
 ```
 
+Notice the false positives at the bottom? Those would be interesting [to detect](https://github.com/ksandom/lsd/issues/1).
+
+## Contributing
+
+* PRs welcome! :)
+* There's [a list](https://github.com/ksandom/lsd/issues/3) of things I know need to be improved.
+
 ## Installing it
 
 ```bash
