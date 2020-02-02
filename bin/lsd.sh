@@ -21,7 +21,7 @@ function inputToList
 {
     for fileName in "$@"; do
         if [ -d "$fileName" ]; then
-            ls -1 "$fileName" | sed "s#^#$fileName/#g"
+            find "$fileName" -maxdepth 1
         else
             echo "$fileName"
         fi
@@ -32,7 +32,7 @@ function convertSymlinks
 {
     while read -r fileName; do
         # TODO if [[ "$fileName" =~ ^.*:\ symbolic\ link.*$ ]]; then
-        if echo "$(file "$fileName")" | grep -q "^.*: symbolic link.*$"; then
+        if file "$fileName" | grep -q "^.*: symbolic link.*$"; then
             result="$(file "$fileName" | sed 's/^.*symbolic link to //g')"
             if [ -h "$result" ]; then
                 deepConvertSymlink "$result" "$maxSymlinkDepth"
@@ -54,7 +54,7 @@ function deepConvertSymlink
     
     if [ -h "$result" ]; then
         if [ "$depth" -lt "$maxSymlinkDepth" ]; then
-            let nextDepth=$depth+1
+            nextDepth=$(( depth + 1 ))
             deepConvertSymlink "$result" "$nextDepth"
         else # We're out of our depth. Just return what we have.
             echo "$result"
@@ -108,7 +108,7 @@ function getMethod
     line="$(grep -n "$description" "$fileName" | head -n1)"
     lineNumber="$(echo "$line" | cut -d: -f1)"
     lineRemainder="$(echo "$line" | cut -d: -f2-)"
-    cleanedRemainder="$(echo "$lineRemainder" | sed 's/^ *//g')"
+    cleanedRemainder="${lineRemainder//^ */}"
     
     if [ "${cleanedRemainder::1}" == '#' ]; then
         commentInitiator='#'
@@ -126,15 +126,14 @@ function exclude
     fileName="$1"
     
     # TODO Should we exclude lines mentioning \|$fileName ?
-    grep -iv "\(usage\| *or:\|^$\|^#!\|^ *$fileName\|^# *$\|Copyright\)"
+    grep -iv "\\(usage\\| *or:\\|^$\\|^#!\\|^ *$fileName\\|^# *$\\|Copyright\\)"
 }
 
 function getDescriptionForFile
 {
     fileName="$1"
     
-    type="$(getType "$fileName")"
-    if [ "$?" == 0 ] ; then
+    if type="$(getType "$fileName")" ; then
         if [ "$type" == 'Binary' ]; then
             # TODO Restrict to ELF?
             # TODO Fix path to the fileName. Eg ./filename vs an absolute path that is passed.
@@ -163,7 +162,7 @@ function format
 {
     #column -t -s"\0"
     IFS="${separator}"
-    while read fileName type method description; do
+    while read -r fileName type method description; do
         printf '%-30s' "$(truncateText "$fileName" 30)"
         printf '%-30s' "$(colouriseText "$type" 10)"
         printf '%-30s' "$(colouriseText "$method" 10)"
@@ -180,7 +179,7 @@ function truncateText
     text="$1"
     limit="$2"
     
-    echo "$text" | cut -b-$limit
+    echo "$text" | cut -b-"$limit"
 }
 
 function colouriseText
@@ -189,11 +188,11 @@ function colouriseText
     limit="$2"
     
     inputId="$(echo "$text" | md5sum | sed 's/\([a-z]\|-\| \)//g' | sed 's/^0*//g')"
-    outputId=$(($inputId%$colourCount))
+    outputId=$(( inputId % colourCount ))
     
     colour="${usefulColours[$outputId]}"
     
-    truncatedText="$(echo "$text" | cut -b-$limit)"
+    truncatedText="$(echo "$text" | cut -b-"$limit")"
     
     echo -e "${colour}${truncatedText}${defaultColour}"
 }
@@ -214,10 +213,10 @@ function generateUnfilteredCodes
 
 function filterSimilarColours
 {
-    while read -r foreground $background;do
-            let offsetForeground1=$foreground+10
-            let offsetForeground2=$foreground+60
-            let offsetForeground3=$foreground+70
+    while read -r foreground background;do
+            offsetForeground1=$(( foreground + 10 ))
+            offsetForeground2=$(( foreground + 60 ))
+            offsetForeground3=$(( foreground + 70 ))
             
             if [ "$offsetForeground1" != "$foreground" ] && [ "$offsetForeground2" != "$foreground" ] && [ "$offsetForeground3" != "$foreground" ]; then
                 echo "$foreground $background"
@@ -233,10 +232,10 @@ function filterManualColours
         if [ "${#combinedFilter}" == '2' ]; then
             combinedFilter="$combinedFilter$filter"
         else
-            combinedFilter="$combinedFilter\|$filter"
+            combinedFilter="$combinedFilter\\|$filter"
         fi
     done
-    combinedFilter="$combinedFilter\)"
+    combinedFilter="$combinedFilter\\)"
     
     grep -v "$combinedFilter"
 }
@@ -256,7 +255,7 @@ function generateColours
 
 function listColours
 {
-    for colour in ${usefulColours[@]}; do
+    for colour in "${usefulColours[@]}"; do
         echo -e "${colour}thing${defaultColour}"
     done
 }
