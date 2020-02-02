@@ -5,7 +5,7 @@ separator="	"
 maxSymlinkDepth="20"
 
 defaultColour="\\e[0m"
-extraColoursToBan=("97 103" "96 103" "96 102" "97 106" "97 107" "96 107" "96 106" "95 106" "64 100" "93 107" "93 107" "95 102" "95 101" "95 105" "94 100" "92 107" "93 103" "93 102" "92 106" "92 103" "92 102" "91 105" "93 106" "91 101" "90 105" "90 104" "90 100" "37 102" "37 103" "37 47" "39 47" "94 104" "37 105")
+extraColoursToBan=("97 103" "96 103" "96 102" "97 106" "97 107" "96 107" "96 106" "95 106" "64 100" "93 107" "93 107" "95 102" "95 101" "95 105" "94 100" "92 107" "93 103" "93 102" "92 106" "92 103" "92 102" "91 105" "93 106" "91 101" "90 105" "90 104" "90 100" "37 102" "37 103" "37 47" "39 47" "94 104" "37 105" "94 101" "94 105" "90 101" "95 100" "95 104" "97 102" "91 100" "91 104" "39 49" "38 49" "38 48" "38 47" "37 49" "37 48")
 
 # Stuff you shouldn't mess with.
 usefulColours[0]="$defaultColour"
@@ -200,8 +200,13 @@ function colouriseText
 
 function generateUnfilteredCodes
 {
-    for foreground in {39..37} {90..97}; do
-        for background in {49..47} {100..107}; do
+    for foreground in {39..37}; do
+        for background in {49..47}; do
+            echo "$foreground" "$background"
+        done
+    done
+    for foreground in {90..97}; do
+        for background in {100..107}; do
             echo "$foreground" "$background"
         done
     done
